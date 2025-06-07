@@ -1,5 +1,5 @@
 {
-  "name": "gmail-spreadsheet-gemini",
+  "name": "Financial-Transaction-Extractor",
   "version": "1.0.0",
   "description": "Automated Gmail to Google Sheets financial transaction extractor using Gemini AI",
   "main": "api/process.py",
@@ -19,6 +19,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/gmail-spreadsheet-gemini.git"
+    "url": "https://github.com/Wimboro/Financial-Transaction-Extractor.git"
   }
 } 
