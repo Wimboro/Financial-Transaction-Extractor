@@ -1,0 +1,24 @@
+{
+  "functions": {
+    "api/process.py": {
+      "runtime": "python3.9"
+    },
+    "api/webhook.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "env": {
+    "GEMINI_API_KEY": "@gemini_api_key",
+    "SPREADSHEET_ID": "@spreadsheet_id",
+    "TELEGRAM_BOT_TOKEN": "@telegram_bot_token",
+    "TELEGRAM_CHAT_IDS": "@telegram_chat_ids",
+    "TELEGRAM_ENABLED": "@telegram_enabled",
+    "GMAIL_ACCOUNTS": "@gmail_accounts",
+    "PROCESSOR_USER_ID": "@processor_user_id"
+  },
+  "build": {
+    "env": {
+      "PYTHONPATH": "$PYTHONPATH:."
+    }
+  }
+} 

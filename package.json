@@ -1,0 +1,24 @@
+{
+  "name": "gmail-spreadsheet-gemini",
+  "version": "1.0.0",
+  "description": "Automated Gmail to Google Sheets financial transaction extractor using Gemini AI",
+  "main": "api/process.py",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'No build step required for Python functions'",
+    "deploy": "vercel --prod"
+  },
+  "keywords": [
+    "gmail",
+    "google-sheets",
+    "gemini-ai",
+    "financial-automation",
+    "serverless"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/gmail-spreadsheet-gemini.git"
+  }
+} 
