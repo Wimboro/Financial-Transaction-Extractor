@@ -27,6 +27,7 @@ except ImportError:
 
 # Google API imports
 from google.oauth2.credentials import Credentials
+from google.oauth2 import service_account
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
@@ -35,10 +36,11 @@ from googleapiclient.discovery import build
 import google.generativeai as genai
 
 # Constants & Configuration
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 
-          'https://www.googleapis.com/auth/gmail.modify',
-          'https://www.googleapis.com/auth/spreadsheets']
+GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 
+                'https://www.googleapis.com/auth/gmail.modify']
+SHEETS_SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 CREDENTIALS_FILE = 'credentials.json'
+SA_CREDENTIALS_FILE = 'sa-credentials.json'  # Service account credentials for Sheets
 TOKEN_FILE_TEMPLATE = 'token_{}.json'  # Template for token files with account identifier
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')  # From environment variable
 MODEL_NAME = 'gemini-2.0-flash'  # Adjust based on available models
@@ -46,6 +48,41 @@ SPREADSHEET_ID = os.environ.get('SPREADSHEET_ID', '')  # From environment variab
 SHEET_RANGE = 'Sheet1!A1'  # Starting cell for appending data
 GMAIL_SEARCH_QUERY = os.environ.get('GMAIL_SEARCH_QUERY', 
                                   "subject:(Transfer OR Pembayaran OR Transaksi OR payment OR transaction) is:unread newer_than:1d")
+
+"""
+SETUP INSTRUCTIONS FOR SERVICE ACCOUNT CREDENTIALS:
+
+1. Go to Google Cloud Console (https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable Google Sheets API for your project
+4. Go to "IAM & Admin" > "Service Accounts"
+5. Click "Create Service Account"
+6. Give it a name (e.g., "gmail-sheets-processor")
+7. Click "Create and Continue"
+8. Grant the "Editor" role or create a custom role with these permissions:
+   - sheets.spreadsheets.batchGet
+   - sheets.spreadsheets.batchUpdate
+   - sheets.spreadsheets.get
+   - sheets.spreadsheets.getByDataFilter
+   - sheets.spreadsheets.values.append
+   - sheets.spreadsheets.values.batchGet
+   - sheets.spreadsheets.values.batchUpdate
+   - sheets.spreadsheets.values.get
+   - sheets.spreadsheets.values.update
+9. Click "Done"
+10. Click on the created service account
+11. Go to "Keys" tab
+12. Click "Add Key" > "Create new key"
+13. Choose "JSON" format
+14. Download the file and rename it to "sa-credentials.json"
+15. Place it in the same directory as this script
+
+IMPORTANT: Share your Google Spreadsheet with the service account email!
+- Open your Google Spreadsheet
+- Click "Share" 
+- Add the service account email (found in the sa-credentials.json file)
+- Give it "Editor" permissions
+"""
 
 # Get Gmail accounts to process from environment variable or command line
 GMAIL_ACCOUNTS = os.environ.get('GMAIL_ACCOUNTS', '').split(',')
@@ -69,20 +106,20 @@ class HTMLTextExtractor(HTMLParser):
     def get_text(self):
         return ' '.join(self.text)
 
-def authenticate_google_services(account_id='default'):
+def authenticate_gmail(account_id='default'):
     """
-    Authenticate with Google services using OAuth 2.0 for a specific account
+    Authenticate with Gmail using OAuth 2.0 for a specific account
     Args:
         account_id: Identifier for the account (used in token filename)
     Returns:
-        credentials for Gmail and Sheets APIs
+        credentials for Gmail API
     """
     token_file = TOKEN_FILE_TEMPLATE.format(account_id)
     creds = None
     
     if os.path.exists(token_file):
         creds = Credentials.from_authorized_user_info(
-            json.load(open(token_file)), SCOPES)
+            json.load(open(token_file)), GMAIL_SCOPES)
     
     # If credentials are invalid or don't exist, authenticate
     if not creds or not creds.valid:
@@ -90,7 +127,7 @@ def authenticate_google_services(account_id='default'):
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                CREDENTIALS_FILE, SCOPES)
+                CREDENTIALS_FILE, GMAIL_SCOPES)
             creds = flow.run_local_server(port=0)
             
             # Save account information in token file
@@ -102,6 +139,66 @@ def authenticate_google_services(account_id='default'):
                 json.dump(creds_dict, token)
     
     return creds
+
+def authenticate_sheets():
+    """
+    Authenticate with Google Sheets using Service Account credentials
+    Returns:
+        credentials for Sheets API
+    """
+    try:
+        if not os.path.exists(SA_CREDENTIALS_FILE):
+            raise FileNotFoundError(
+                f"Service account credentials file '{SA_CREDENTIALS_FILE}' not found.\n"
+                f"Please follow the setup instructions in the comments above to create this file.\n"
+                f"You can also use the 'sa-credentials.json.template' file as a reference."
+            )
+        
+        # Verify the JSON structure
+        try:
+            with open(SA_CREDENTIALS_FILE, 'r') as f:
+                sa_data = json.load(f)
+                
+            # Validate required fields
+            required_fields = ['type', 'project_id', 'private_key', 'client_email']
+            missing_fields = [field for field in required_fields if field not in sa_data]
+            
+            if missing_fields:
+                raise ValueError(f"Service account file is missing required fields: {missing_fields}")
+                
+            if sa_data.get('type') != 'service_account':
+                raise ValueError("This doesn't appear to be a service account credentials file")
+                
+            print(f"Service account email: {sa_data.get('client_email')}")
+            print("Remember to share your Google Spreadsheet with this email address!")
+            
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in service account file: {e}")
+        
+        credentials = service_account.Credentials.from_service_account_file(
+            SA_CREDENTIALS_FILE, scopes=SHEETS_SCOPES)
+        
+        print("Successfully authenticated with Google Sheets using service account")
+        return credentials
+        
+    except Exception as e:
+        print(f"Error authenticating with Google Sheets: {e}")
+        print(f"\nTroubleshooting tips:")
+        print(f"1. Make sure {SA_CREDENTIALS_FILE} exists in the current directory")
+        print(f"2. Verify the file contains valid JSON")
+        print(f"3. Ensure the service account has the necessary permissions")
+        print(f"4. Share your Google Spreadsheet with the service account email")
+        print(f"5. Check that Google Sheets API is enabled in your Google Cloud project")
+        raise
+
+# Keep the old function for backwards compatibility, but mark it as deprecated
+def authenticate_google_services(account_id='default'):
+    """
+    DEPRECATED: Use authenticate_gmail() and authenticate_sheets() instead
+    This function is kept for backwards compatibility
+    """
+    print("Warning: authenticate_google_services() is deprecated. Use authenticate_gmail() and authenticate_sheets() instead.")
+    return authenticate_gmail(account_id)
 
 def initialize_gemini_client(api_key, model_name):
     """
@@ -431,11 +528,11 @@ def process_gmail_account(account_id):
     
     try:
         # Authenticate Google services for this account
-        creds = authenticate_google_services(account_id)
+        creds = authenticate_gmail(account_id)
         
         # Build service objects
         gmail_service = build('gmail', 'v1', credentials=creds)
-        sheets_service = build('sheets', 'v4', credentials=creds)
+        sheets_service = build('sheets', 'v4', credentials=authenticate_sheets())
         
         # Initialize Gemini client
         gemini_model_instance = initialize_gemini_client(GEMINI_API_KEY, MODEL_NAME)
