@@ -1,3 +1,4 @@
+<!-- GitAds-Verify: 6G765HGS8TACYKYZLJBUW31E4E2OC1LL -->
 # Gmail to Google Sheets Financial Transaction Extractor
 
 This Python script automates the extraction of financial transaction data from Gmail emails, parses this data using Google's Gemini AI model, and records the structured data into a Google Sheet.
