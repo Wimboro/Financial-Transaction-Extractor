@@ -1,4 +1,7 @@
 <!-- GitAds-Verify: 6G765HGS8TACYKYZLJBUW31E4E2OC1LL -->
+## GitAds Sponsored
+[![Sponsored by GitAds](https://gitads.dev/v1/ad-serve?source=wimboro/financial-transaction-extractor@github)](https://gitads.dev/v1/ad-track?source=wimboro/financial-transaction-extractor@github)
+
 # Gmail to Google Sheets Financial Transaction Extractor
 
 This Python script automates the extraction of financial transaction data from Gmail emails, parses this data using Google's Gemini AI model, and records the structured data into a Google Sheet.
